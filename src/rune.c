@@ -16,7 +16,9 @@ void enableRawMode() {
     atexit(disableRawMode);     // disable raw mode at exit
 
     struct termios raw = orig_termios;
-    raw.c_iflag &= ~(IXON | ICRNL);
+    raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    raw.c_oflag &= ~(OPOST);
+    raw.c_cflag |= (CS8);
     raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);     // disable echo and canonical mode (read input byte-by-byte)
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);   // apply changes, discard unread inputs
@@ -30,10 +32,10 @@ int main() {
     while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q') {
         // check for control characters (ASCII code: 0-31)
         if (iscntrl(c)) {
-            printf("%d\n", c);
+            printf("%d\r\n", c);
         } 
         else {
-            printf("%d ('%c')\n", c, c);
+            printf("%d ('%c')\r\n", c, c);
         }
     }
 
