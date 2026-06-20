@@ -11,12 +11,12 @@ void disableRawMode() {
 
 void enableRawMode() {
     tcgetattr(STDIN_FILENO, &orig_termios);  // read current attributes into struct raw
-    atexit(disableRawMode);
+    atexit(disableRawMode);     // disable raw mode at exit
 
     struct termios raw = orig_termios;
-    raw.c_lflag &= ~(ECHO | ICANON);     // turn off echo ()
+    raw.c_lflag &= ~(ECHO | ICANON);     // disable echo and canonical mode (read input byte-by-byte)
 
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);   // apply changes, discard unread inputs
 }
 
 
