@@ -20,6 +20,8 @@ void enableRawMode() {
     raw.c_oflag &= ~(OPOST);
     raw.c_cflag |= (CS8);
     raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);     // disable echo and canonical mode (read input byte-by-byte)
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 1;
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);   // apply changes, discard unread inputs
 }
@@ -28,8 +30,9 @@ void enableRawMode() {
 int main() {
     enableRawMode();
 
-    char c;
-    while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q') {
+    while (1) {
+        char c = '\0';
+        read(STDIN_FILENO, &c, 1);
         // check for control characters (ASCII code: 0-31)
         if (iscntrl(c)) {
             printf("%d\r\n", c);
@@ -37,6 +40,8 @@ int main() {
         else {
             printf("%d ('%c')\r\n", c, c);
         }
+
+        if (c == 'q') break;
     }
 
     return 0;
