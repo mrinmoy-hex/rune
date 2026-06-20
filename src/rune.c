@@ -16,7 +16,8 @@ void enableRawMode() {
     atexit(disableRawMode);     // disable raw mode at exit
 
     struct termios raw = orig_termios;
-    raw.c_lflag &= ~(ECHO | ICANON | ISIG);     // disable echo and canonical mode (read input byte-by-byte)
+    raw.c_iflag &= ~(IXON);
+    raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);     // disable echo and canonical mode (read input byte-by-byte)
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);   // apply changes, discard unread inputs
 }
