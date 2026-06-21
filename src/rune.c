@@ -45,23 +45,50 @@ void enableRawMode() {
 }
 
 
+char editorReadKey() {
+    int nread;  // number of bytes read
+    char c;
+    while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+        //
+        if (nread == -1 && errno != EAGAIN) die("read");
+    }
+    return c;
+}
+
+
+
+/*** =========== output =========== ***/
+
+void editorRefreshScreen() {
+    write(STDOUT_FILENO, "\x1b[2J", 4);   // clears the entire screen
+    write(STDOUT_FILENO, "\x1b[H", 3);    // reposition cursor to top-left
+}  
+
+
+/*** =========== input =========== ***/
+
+void editorProcessKeypress() {
+    char c = editorReadKey();
+
+    switch(c) {
+        case CTRL_KEY('q'):
+            exit(0);
+            break;
+    }
+}
+
+
+
+
+
 /*** =========== init =========== ***/
 
 int main() {
     enableRawMode();
 
     while (1) {
-        char c = '\0';
-        if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) die("read");
-        // check for control characters (ASCII code: 0-31)
-        if (iscntrl(c)) {
-            printf("%d\r\n", c);
-        } 
-        else {
-            printf("%d ('%c')\r\n", c, c);
-        }
-
-        if (c == CTRL_KEY('q')) break;      // Ctrl + q to exit
+        editorRefreshScreen();
+        editorProcessKeypress();
     }
 
     return 0;
