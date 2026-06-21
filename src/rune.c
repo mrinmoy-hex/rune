@@ -1,5 +1,4 @@
-/*** ---------------- includes ----------------***/
-
+/*** =========== includes ===========***/
 #include <asm-generic/errno-base.h>
 #include <ctype.h>
 #include <errno.h>
@@ -8,11 +7,16 @@
 #include <unistd.h>
 #include <termios.h>
 
-/*** ---------------- data ----------------***/
+
+/*** =========== defines ===========***/
+
+#define CTRL_KEY(k) ((k) & 0x1f)
+
+/*** =========== data ===========***/
 
 struct termios orig_termios;
 
-/*** ---------------- terminal ---------------- ***/
+/*** =========== terminal =========== ***/
 
 void die(const char *message) {
     perror(message);
@@ -41,7 +45,7 @@ void enableRawMode() {
 }
 
 
-/*** ---------------- init ---------------- ***/
+/*** =========== init =========== ***/
 
 int main() {
     enableRawMode();
@@ -57,7 +61,7 @@ int main() {
             printf("%d ('%c')\r\n", c, c);
         }
 
-        if (c == 'q') break;
+        if (c == CTRL_KEY('q')) break;      // Ctrl + q to exit
     }
 
     return 0;
