@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <termios.h>
+#include <sys/ioctl.h>
 
 
 /*** =========== defines ===========***/
@@ -14,10 +15,18 @@
 // e.g. Ctrl-Q (0x71) -> 0x11. Used to detect Ctrl-key combos.
 #define CTRL_KEY(k) ((k) & 0x1f)
 
+
 /*** =========== data ===========***/
 
-// Stores the terminal's original attributes so we can restore them on exit
-struct termios orig_termios;
+// Stores the terminal's original attributes
+struct editorConfig {
+    int screenrows;
+    int screencols;
+    struct termios orig_termios;
+};
+
+struct editorConfig E;
+
 
 /*** =========== terminal =========== ***/
 
@@ -32,16 +41,16 @@ void die(const char *message) {
 
 void disableRawMode() {
     // restore the terminal to whatever state it was in before we touched it
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1)
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.orig_termios) == -1)
         die("tcsetattr");
 }
 
 
 void enableRawMode() {
-    if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) die("tcgetattr");  // read current attributes into struct raw
+    if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1) die("tcgetattr");  // read current attributes into struct raw
     atexit(disableRawMode);     // disable raw mode at exit
 
-    struct termios raw = orig_termios;
+    struct termios raw = E.orig_termios;
 
     // input flags: turn off break/CR-to-NL translation/parity check/strip 8th bit/sw flow control
     raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
@@ -66,12 +75,26 @@ char editorReadKey() {
 }
 
 
+int getWindowSize(int *rows, int *cols) {
+    struct winsize ws;
+
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+        return -1;
+    }
+    else {
+        *rows = ws.ws_row;
+        *cols = ws.ws_col;
+        return 0;
+    }
+}
+
+
 
 /*** =========== output =========== ***/
 
 void editorDrawRows() {
     int y;
-    for (y = 0; y < 24; y++) {
+    for (y = 0; y < E.screenrows; y++) {
         write(STDOUT_FILENO, "~\r\n", 3);   // tilde for each row, like vim does for empty lines
     }
 }
@@ -109,8 +132,16 @@ void editorProcessKeypress() {
 
 /*** =========== init =========== ***/
 
+
+void initEditor() {
+    if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
+}
+
+
+
 int main() {
     enableRawMode();
+    initEditor();
 
     while (1) {
         editorRefreshScreen();
