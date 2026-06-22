@@ -168,14 +168,16 @@ void editorDrawRows(struct abuff *ab) {
 void editorRefreshScreen() {
     struct abuff ab = ABUFF_INIT;
 
-    abAppend(&ab, "\x1b[2J", 4);   // clears the entire screen
-    abAppend(&ab, "\x1b[H", 3);    // reposition cursor to top-left
+    abAppend(&ab, "\x1b[?25l", 6);      // hides the cursor while we draw the screen
+    abAppend(&ab, "\x1b[2J", 4);        // clears the entire screen
+    abAppend(&ab, "\x1b[H", 3);         // reposition cursor to top-left
 
-    editorDrawRows(&ab);           // draw the rows of tildes
+    editorDrawRows(&ab);                // draw the rows of tildes
 
-    abAppend(&ab, "\x1b[H", 3);    // move cursor back to top-left after drawing
+    abAppend(&ab, "\x1b[H", 3);         // move cursor back to top-left after drawing
+    abAppend(&ab, "\x1b[?25h", 6);      // shows the cursor again
 
-    write(STDOUT_FILENO, ab.b, ab.len);     // write the entire contents of the abuff to the terminal at once 
+    write(STDOUT_FILENO, ab.b, ab.len); // write the entire contents of the abuff to the terminal at once 
     abFree(&ab);
 }  
 
