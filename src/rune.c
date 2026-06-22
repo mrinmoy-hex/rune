@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <sys/ioctl.h>
+#include <string.h>
 
 
 /*** =========== defines ===========***/
@@ -116,28 +117,66 @@ int getWindowSize(int *rows, int *cols) {
 
 
 
+/*** =========== append buffer =========== ***/
+
+
+struct abuff {
+    char *b;
+    int len;
+};
+
+#define ABUFF_INIT {NULL, 0}    // constructor for abuff
+
+
+// Appends a string of given length to the end of the abuff
+void abAppend(struct abuff *ab, const char *s, int len) {
+    char *new = realloc(ab->b, ab->len + len);
+
+    // 
+    if (new == NULL) return;
+    // copy the new string to the end of the existing buffer
+    memcpy(&new[ab->len], s, len);
+    ab->b = new;
+    ab->len += len;
+
+}
+
+// Deallocates the abuff
+void abFree(struct abuff *ab) {
+    free(ab->b);
+}
+
+
+
+
+
 /*** =========== output =========== ***/
 
-void editorDrawRows() {
+void editorDrawRows(struct abuff *ab) {
     int y;
     for (y = 0; y < E.screenrows; y++) {
         // tilde for each row, like vim does for empty lines
-        write(STDOUT_FILENO, "~", 1);   
+        abAppend(ab, "~", 1);
 
         if (y < E.screenrows - 1) {
-            write(STDOUT_FILENO, "\r\n", 2);   // move to the next line
+            abAppend(ab, "\r\n", 2);   // move to the next line
         }
     }
 }
 
 
 void editorRefreshScreen() {
-    write(STDOUT_FILENO, "\x1b[2J", 4);   // clears the entire screen
-    write(STDOUT_FILENO, "\x1b[H", 3);    // reposition cursor to top-left
+    struct abuff ab = ABUFF_INIT;
 
-    editorDrawRows();
+    abAppend(&ab, "\x1b[2J", 4);   // clears the entire screen
+    abAppend(&ab, "\x1b[H", 3);    // reposition cursor to top-left
 
-    write(STDOUT_FILENO, "\x1b[H", 3);    // move cursor back to top-left after drawing
+    editorDrawRows(&ab);           // draw the rows of tildes
+
+    abAppend(&ab, "\x1b[H", 3);    // move cursor back to top-left after drawing
+
+    write(STDOUT_FILENO, ab.b, ab.len);     // write the entire contents of the abuff to the terminal at once 
+    abFree(&ab);
 }  
 
 
