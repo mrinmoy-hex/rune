@@ -74,35 +74,35 @@ char editorReadKey() {
     return c;
 }
 
-
+// Queries the terminal for the current cursor position, and parses the response into rows and cols
 int getCursorPosition(int *rows, int *cols) {
-    char buf[32];
+    char buff[32];   // buffer to store the terminal's response string
     unsigned int i = 0;
 
 
-    if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+    if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;     // sends escape sequence for the cursor's pos
 
-    while (i < sizeof(buf) -1) {
-        if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
-        if (buf[i] == 'R') break;
-        i++;
+    while (i < sizeof(buff) -1) {
+        if (read(STDIN_FILENO, &buff[i], 1) != 1) break;        // read 1 char into buff[i]
+        if (buff[i] == 'R') break;                              // if hit 'R', sotp!
+        i++;                                                    // move to the next slot
     }
 
-    buf[i] = '\0';
+    buff[i] = '\0';
 
-    printf("\r\n&buf[1]: '%s'\r\n", &buf[1]);
+    if (buff[0] != '\x1b' || buff[1] != '[') return -1;         // check for escape sequence
+    // Slices off the '\x1b[' wrapper, reads the numbers, and saves them into rows and cols variables
+    if (sscanf(&buff[2], "%d;%d", rows, cols) != 2) return -1;
 
-    editorReadKey();
-
-    return -1;
+    return 0;
 }
 
 
-
+// Gets the size of the terminal window in rows and columns, and saves them into the provided pointers
 int getWindowSize(int *rows, int *cols) {
     struct winsize ws;
 
-    if (1 || ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
         // fallback method: move cursor to bottom-right and query position
         if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
         return getCursorPosition(rows, cols);
