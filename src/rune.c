@@ -158,6 +158,8 @@ void editorDrawRows(struct abuff *ab) {
         // tilde for each row, like vim does for empty lines
         abAppend(ab, "~", 1);
 
+        // K command erases part of the current line
+        abAppend(ab, "\x1b[K", 3);     // clear the rest of the line after the tilde
         if (y < E.screenrows - 1) {
             abAppend(ab, "\r\n", 2);   // move to the next line
         }
@@ -169,7 +171,7 @@ void editorRefreshScreen() {
     struct abuff ab = ABUFF_INIT;
 
     abAppend(&ab, "\x1b[?25l", 6);      // hides the cursor while we draw the screen
-    abAppend(&ab, "\x1b[2J", 4);        // clears the entire screen
+    // abAppend(&ab, "\x1b[2J", 4);        // clears the entire screen
     abAppend(&ab, "\x1b[H", 3);         // reposition cursor to top-left
 
     editorDrawRows(&ab);                // draw the rows of tildes
