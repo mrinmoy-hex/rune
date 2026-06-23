@@ -201,7 +201,6 @@ void editorRefreshScreen() {
     snprintf(buff, sizeof(buff), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
     abAppend(&ab, buff, strlen(buff));
 
-    abAppend(&ab, "\x1b[H", 3);         // move cursor back to top-left after drawing
     abAppend(&ab, "\x1b[?25h", 6);      // shows the cursor again
 
     write(STDOUT_FILENO, ab.b, ab.len); // write the entire contents of the abuff to the terminal at once 
@@ -212,6 +211,23 @@ void editorRefreshScreen() {
 /*** =========== input =========== ***/
 
 
+void editorMoveCursor(char key) {
+    switch (key) {
+        case 'a':
+            E.cx--;
+            break;
+        case 'd':
+            E.cx++;
+            break;
+        case 'w':
+            E.cy--;
+            break;
+        case 's':
+            E.cy++;
+            break;
+
+    }
+}
 
 
 
@@ -226,6 +242,13 @@ void editorProcessKeypress() {
             write(STDOUT_FILENO, "\x1b[H", 3);
 
             exit(0);
+            break;
+
+        case 'w':
+        case 's':
+        case 'a':
+        case 'd':
+            editorMoveCursor(c);
             break;
     }
 }
