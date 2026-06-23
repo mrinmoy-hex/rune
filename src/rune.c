@@ -23,6 +23,7 @@
 
 // Stores the terminal's original attributes
 struct editorConfig {
+    int cx, cy;
     int screenrows;
     int screencols;
     struct termios orig_termios;
@@ -196,6 +197,10 @@ void editorRefreshScreen() {
 
     editorDrawRows(&ab);                // draw the rows of tildes
 
+    char buff[32];
+    snprintf(buff, sizeof(buff), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+    abAppend(&ab, buff, strlen(buff));
+
     abAppend(&ab, "\x1b[H", 3);         // move cursor back to top-left after drawing
     abAppend(&ab, "\x1b[?25h", 6);      // shows the cursor again
 
@@ -205,6 +210,11 @@ void editorRefreshScreen() {
 
 
 /*** =========== input =========== ***/
+
+
+
+
+
 
 void editorProcessKeypress() {
     char c = editorReadKey();
@@ -228,6 +238,8 @@ void editorProcessKeypress() {
 
 
 void initEditor() {
+    E.cx = 0;
+    E.cy = 0;
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
 
