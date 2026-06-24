@@ -1,11 +1,11 @@
 /*** =========== includes ===========***/
-#include <asm-generic/errno-base.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <termios.h>
+#include <sys/types.h>
 #include <sys/ioctl.h>
 #include <string.h>
 
@@ -34,11 +34,20 @@ enum editorKey {
 
 /*** =========== data ===========***/
 
+// Stores line of text as a pointer to char data and a length
+typedef struct erow {
+    int size;
+    char *chars;
+} erow;
+
+
 // Stores the terminal's original attributes
 struct editorConfig {
     int cx, cy;
     int screenrows;
     int screencols;
+    int numrows;
+    erow row;
     struct termios orig_termios;
 };
 
@@ -177,6 +186,23 @@ int getWindowSize(int *rows, int *cols) {
 }
 
 
+/*** =========== fiel i/o =========== ***/
+
+
+void editorOpen() {
+    char *line = "Hello, world!";
+    ssize_t linelen = 13;
+
+    E.row.size = linelen;
+    E.row.chars = malloc(linelen + 1);
+
+    memcpy(E.row.chars, line, linelen);     // copy the string into the row's char array
+    E.row.chars[linelen] = '\0';            // null-terminate the string
+    E.numrows = 1;
+}
+
+
+
 
 /*** =========== append buffer =========== ***/
 
@@ -216,26 +242,34 @@ void abFree(struct abuff *ab) {
 void editorDrawRows(struct abuff *ab) {
     int y;
     for (y = 0; y < E.screenrows; y++) {
-        if (y == E.screenrows / 3) {
-            char welcome[80];
-            int welconelen = snprintf(welcome, sizeof(welcome),
-        "Rune editor -- version %s", RUNE_VERSION);
+        // if the current row is beyond the number of rows in the file, draw a tilde
+        if (y >= E.numrows) {
+            if (y == E.screenrows / 3) {
+                char welcome[80];
+                int welconelen = snprintf(welcome, sizeof(welcome),
+            "Rune editor -- version %s", RUNE_VERSION);
             
-            if (welconelen > E.screencols) welconelen = E.screencols;
+                if (welconelen > E.screencols) welconelen = E.screencols;
 
-            // centering the welcome message
-            int padding = (E.screencols - welconelen) / 2;
-            if (padding) {
+                // centering the welcome message
+                int padding = (E.screencols - welconelen) / 2;
+                if (padding) {
+                    abAppend(ab, "~", 1);
+                    padding--;
+                }
+                while (padding--) abAppend(ab, " ", 1);
+                abAppend(ab, welcome, welconelen);
+
+            } else {
+                // tilde for each row, like vim does for empty lines
                 abAppend(ab, "~", 1);
-                padding--;
             }
-            while (padding--) abAppend(ab, " ", 1);
-            abAppend(ab, welcome, welconelen);
-
         } else {
-            // tilde for each row, like vim does for empty lines
-            abAppend(ab, "~", 1);
+            int len = E.row.size;
+            if (len > E.screencols) len = E.screencols;     // truncate the line if it's longer than the screen width
+            abAppend(ab, E.row.chars, len);                 // append the line of text to the buffer
         }
+        
 
         // K command erases part of the current line
         abAppend(ab, "\x1b[K", 3);     // clear the rest of the line after the tilde
@@ -352,6 +386,8 @@ void editorProcessKeypress() {
 void initEditor() {
     E.cx = 0;
     E.cy = 0;
+    E.numrows = 0;
+
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
 
@@ -360,6 +396,7 @@ void initEditor() {
 int main() {
     enableRawMode();
     initEditor();
+    editorOpen();
 
     while (1) {
         editorRefreshScreen();
