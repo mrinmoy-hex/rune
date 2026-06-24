@@ -1,4 +1,10 @@
 /*** =========== includes ===========***/
+
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
+
 #include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -189,16 +195,28 @@ int getWindowSize(int *rows, int *cols) {
 /*** =========== fiel i/o =========== ***/
 
 
-void editorOpen() {
-    char *line = "Hello, world!";
-    ssize_t linelen = 13;
+void editorOpen(char *filename) {
+    FILE *fp = fopen(filename, "r");        // opening a file in read only
+    if (!fp) die("fopen");                  // if failed to open file
 
-    E.row.size = linelen;
-    E.row.chars = malloc(linelen + 1);
+    char *line = NULL;
+    size_t linecap = 0;
+    ssize_t linelen;
+    linelen = getline(&line, &linecap, fp);
+    if (linelen != -1) {
+        while (linelen > 0 && (line[linelen - 1] == '\n' ||
+                               line[linelen - 1] == '\r'))
+            linelen--;
+        E.row.size = linelen;
+        E.row.chars = malloc(linelen + 1);
 
-    memcpy(E.row.chars, line, linelen);     // copy the string into the row's char array
-    E.row.chars[linelen] = '\0';            // null-terminate the string
-    E.numrows = 1;
+        memcpy(E.row.chars, line, linelen);     // copy the string into the row's char array
+        E.row.chars[linelen] = '\0';            // null-terminate the string
+        E.numrows = 1;
+    }
+    
+    free(line);
+    fclose(fp);
 }
 
 
@@ -244,7 +262,7 @@ void editorDrawRows(struct abuff *ab) {
     for (y = 0; y < E.screenrows; y++) {
         // if the current row is beyond the number of rows in the file, draw a tilde
         if (y >= E.numrows) {
-            if (y == E.screenrows / 3) {
+            if (E.numrows == 0 && y == E.screenrows / 3) {
                 char welcome[80];
                 int welconelen = snprintf(welcome, sizeof(welcome),
             "Rune editor -- version %s", RUNE_VERSION);
@@ -393,10 +411,12 @@ void initEditor() {
 
 
 
-int main() {
+int main(int argc, char *argv[]) {
     enableRawMode();
     initEditor();
-    editorOpen();
+    if (argc >= 2) {
+        editorOpen(argv[1]);
+    }
 
     while (1) {
         editorRefreshScreen();
