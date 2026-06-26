@@ -50,6 +50,7 @@ typedef struct erow {
 // Stores the terminal's original attributes
 struct editorConfig {
     int cx, cy;
+    int rowoff;
     int screenrows;
     int screencols;
     int numrows;
@@ -268,11 +269,26 @@ void abFree(struct abuff *ab) {
 
 /*** =========== output =========== ***/
 
+
+void editorScroll() {
+    // check if the cursor is above the visible window, if so scrolls up to where the cursor is
+    if (E.cy < E.rowoff) {
+        E.rowoff = E.cy;
+    }
+    // checks if the cursor is past the bottom of the visible window
+    if (E.cy >= E.rowoff + E.screenrows) {
+        E.rowoff = E.cy - E.screenrows + 1;
+    }
+}
+
+
+
 void editorDrawRows(struct abuff *ab) {
     int y;
     for (y = 0; y < E.screenrows; y++) {
+        int filerow = y + E.rowoff;
         // if the current row is beyond the number of rows in the file, draw a tilde
-        if (y >= E.numrows) {
+        if (filerow >= E.numrows) {
             if (E.numrows == 0 && y == E.screenrows / 3) {
                 char welcome[80];
                 int welconelen = snprintf(welcome, sizeof(welcome),
@@ -294,9 +310,9 @@ void editorDrawRows(struct abuff *ab) {
                 abAppend(ab, "~", 1);
             }
         } else {
-            int len = E.row[y].size;
+            int len = E.row[filerow].size;
             if (len > E.screencols) len = E.screencols;     // truncate the line if it's longer than the screen width
-            abAppend(ab, E.row[y].chars, len);                 // append the line of text to the buffer
+            abAppend(ab, E.row[filerow].chars, len);                 // append the line of text to the buffer
         }
         
 
@@ -310,6 +326,8 @@ void editorDrawRows(struct abuff *ab) {
 
 
 void editorRefreshScreen() {
+    editorScroll();
+
     struct abuff ab = ABUFF_INIT;
 
     abAppend(&ab, "\x1b[?25l", 6);      // hides the cursor while we draw the screen
@@ -319,7 +337,7 @@ void editorRefreshScreen() {
     editorDrawRows(&ab);                // draw the rows of tildes
 
     char buff[32];
-    snprintf(buff, sizeof(buff), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+    snprintf(buff, sizeof(buff), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, E.cx + 1);
     abAppend(&ab, buff, strlen(buff));
 
     abAppend(&ab, "\x1b[?25h", 6);      // shows the cursor again
@@ -352,7 +370,7 @@ void editorMoveCursor(int key) {
             
             break;
         case ARROW_DOWN:
-            if (E.cy != E.screenrows -1) {
+            if (E.cy < E.numrows) {
                 E.cy++;
             }
             
@@ -415,6 +433,7 @@ void editorProcessKeypress() {
 void initEditor() {
     E.cx = 0;
     E.cy = 0;
+    E.rowoff = 0;
     E.numrows = 0;
     E.row = NULL;
 
